@@ -1,0 +1,127 @@
+<p>I argue that this model learned how to predict the first unique token via the addition of two main sub circuits:</p>
+
+<h2>Anti-duplicate circuits:</h2>
+
+The model is very good at avoiding the prediction of non-unique tokens. I argue that it mainly does this via V-composition between 0.1/0.2 with attn_1. Heads 0.1 and 0.2 detect duplicates (for certain tokens) and attn_1 converts "x is a duplicate" information to "x is not the answer":
+
+<ul>
+  <li>
+    <p>Heads 0.1 and 0.2 show duplicate token head "attend to same token" attention patterns and QK circuits (for certain tokens):</p>
+    <div class="iframe-container">
+      <iframe src="attn_01_02.html"></iframe>
+      <iframe src="attn_01_02_qk_circuits.html"></iframe>
+    </div>
+    <style>
+      .iframe-container {
+        display: flex; /* Use flexbox for horizontal layout */
+      }
+      .iframe-container iframe {
+        flex: 1; /* Distribute available space equally between iframes */
+        width: auto; /* Reset the width to auto, so they adjust based on content */
+        height: 400px; /* Set the desired height */
+        border: none; /* Remove iframe border */
+        margin-right: 20px; /* Add margin for spacing between iframes */
+      }
+    </style>
+  </li>
+  <li>
+    <p>While the attn patterns for heads in L1 are difficult to interpret, their aggregate patterns show roughly uniform attn to all previous tokens. This suggests we should think of attn_1 as one unit that divides the work between heads: (For this reason, I view all of their OV circuits together by summing them in this summary. Note I go into much detail about this idea in my colab notebook.)</p>
+    <div id="content-placeholder">
+      <iframe src="attn_1_patterns.html"></iframe>
+    </div>
+    <style>
+      #content-placeholder {
+        display: block;
+        margin-top: 20px; /* Add margin for spacing */
+      }
+      iframe {
+        display: block;
+        width: 100%; /* Make the iframe width 100% of its container */
+        height: 400px; /* Set the desired height */
+        border: none; /* Remove iframe border */
+      }
+    </style>
+  </li>
+  <li>
+    <p>The summed OV circuits corresponding to the paths "embed -&gt; 0.1 / 0.2 -&gt; attn_1 -&gt; logits" shows that if attn_1 attends to duplicate token info moved by 0.1 / 0.2, it will decrease the logits of these same duplicates:</p>
+    <div id="content-placeholder">
+      <iframe src="attn_01_02_ov_circuits.html"></iframe>
+    </div>
+    <style>
+      #content-placeholder {
+        display: block;
+        margin-top: 20px; /* Add margin for spacing */
+      }
+      iframe {
+        display: block;
+        width: 100%; /* Make the iframe width 100% of its container */
+        height: 400px; /* Set the desired height */
+        border: none; /* Remove iframe border */
+      }
+    </style>
+  </li>
+  <li>
+    <p>I claim the model also implements an additional (simpler) algorithm to avoid duplicates: attn_1 can directly anti-copy any tokens it attends to. The summed OV circuit corresponding to the paths "embed -&gt; attn_1 -&gt; logits" shows a clear anti-copying circuit (except for 'i'). Combining this with the roughly uniform aggregate L1 attn patterns, this naturally penalizes more frequent tokens:
+    <div id="content-placeholder">
+      <iframe src="embed_attn_1_ov_circuits.html"></iframe>
+    </div>
+    <style>
+      #content-placeholder {
+        display: block;
+        margin-top: 20px; /* Add margin for spacing */
+      }
+      iframe {
+        display: block;
+        width: 100%; /* Make the iframe width 100% of its container */
+        height: 400px; /* Set the desired height */
+        border: none; /* Remove iframe border */
+      }
+    </style>
+  </li>
+</ul>
+
+<h2>Early non-duplicate copy circuit:</h2>
+
+I suspect the above circuits should allow the model to predict unique tokens pretty reliably. However, how does it predict the <i>first</i> unique token? I argue that it uses a V-composition algorithm between heads 0.0/0.2 and and attn_1: Heads 0.0/0.2 attend to all tokens other than itself (for some tokens) and moves "these tokens are not my duplicate" info, while attn_1 converts this to "these tokens are more likely be the earliest unique token". All destination tokens (for 0.0/0.2) should move token info for the earliest unique tokens, while less will move later unique tokens due to the causal mask. This should cause the first unique token to get boosted the most.
+
+<ul>
+  <li>
+    <p>Heads 0.0 and 0.2 both show  "don't attend to same token" patterns and QK circuit (for certain tokens):</p>
+    <div class="iframe-container">
+      <iframe src="attn_00_patterns.html"></iframe>
+      <iframe src="attn_00_qk_circuit.html"></iframe>
+    </div>
+    <style>
+      .iframe-container {
+        display: flex; /* Use flexbox for horizontal layout */
+      }
+      .iframe-container iframe {
+        flex: 1; /* Distribute available space equally between iframes */
+        width: auto; /* Reset the width to auto, so they adjust based on content */
+        height: 400px; /* Set the desired height */
+        border: none; /* Remove iframe border */
+        margin-right: 20px; /* Add margin for spacing between iframes */
+      }
+    </style>
+  </li>
+  <li>
+    <p>The summed OV circuit corresponding to the "embed -&gt; 0.0/0.2 -&gt; attn_1 -&gt; logits" paths shows that if 0.0/0.2 moves non-duplicate token info, attn_1 will copy (increase the logits) these tokens:</p>
+    <div id="content-placeholder">
+      <iframe src="embed_00_attn_1_ov_circuit.html"></iframe>
+    </div>
+    <style>
+      #content-placeholder {
+        display: block;
+        margin-top: 20px; /* Add margin for spacing */
+      }
+      iframe {
+        display: block;
+        width: 100%; /* Make the iframe width 100% of its container */
+        height: 400px; /* Set the desired height */
+        border: none; /* Remove iframe border */
+      }
+    </style>
+  </li>
+</ul>
+
+See the accompanying colab notebook for my code and much more detail.
